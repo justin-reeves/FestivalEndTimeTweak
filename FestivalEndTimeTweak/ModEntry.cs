@@ -1,9 +1,6 @@
 ﻿using Harmony;
 using System;
-using Microsoft.Xna.Framework;
 using StardewModdingAPI;
-using StardewModdingAPI.Events;
-using StardewModdingAPI.Utilities;
 using StardewValley;
 using System.Collections.Generic;
 using System.Reflection;
@@ -75,9 +72,9 @@ namespace FestivalEndTimeTweak
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             var codes = instructions.ToList();
+            MethodInfo minutesElapsedMI = typeof(StardewValley.Object).GetMethod("minutesElapsed", new Type[] { typeof(Int32), typeof(StardewValley.GameLocation) });
             for (var i = 0; i < codes.Count; i++)
             {
-                MethodInfo minutesElapsedMI = typeof(StardewValley.Object).GetMethod("minutesElapsed", new Type[] { typeof(Int32), typeof(StardewValley.GameLocation) });
                 if (minutesElapsedMI.Equals(codes[i].operand))
                 {
                     codes[i - 2].opcode = OpCodes.Nop;
