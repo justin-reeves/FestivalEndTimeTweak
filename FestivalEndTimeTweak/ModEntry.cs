@@ -1,13 +1,93 @@
-﻿using System;
+﻿using Harmony;
+using System;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewModdingAPI.Utilities;
 using StardewValley;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Linq;
+using System.Reflection.Emit;
 
 namespace FestivalEndTimeTweak
 {
-    class ModEntry
+    /// <summary>The mod entry point.</summary>
+    public class ModEntry : Mod
     {
+        /*********
+        ** Public methods
+        *********/
+        /// <summary>The mod entry point, called after the mod is first loaded.</summary>
+        /// <param name="helper">Provides simplified APIs for writing mods.</param>
+        public override void Entry(IModHelper helper)
+        {
+            //Harmony patcher
+            //https://github.com/kirbylink/FestivalEndTimeTweak.git
+            var harmony = HarmonyInstance.Create("com.github.kirbylink.festivalendtimetweak");
+            var original = helper.Reflection.GetMethod(typeof(Event), "exitEvent").MethodInfo;
+            var prefix = helper.Reflection.GetMethod(typeof(FestivalEndTimeTweak.ChangeFestivalEndTime), "Prefix").MethodInfo;
+            var postfix = helper.Reflection.GetMethod(typeof(FestivalEndTimeTweak.ChangeFestivalEndTime), "Postfix").MethodInfo;
+            var transpiler = helper.Reflection.GetMethod(typeof(FestivalEndTimeTweak.ChangeFestivalEndTime), "Transpiler").MethodInfo;
+            harmony.Patch(original, new HarmonyMethod(prefix), new HarmonyMethod(postfix));
+        }
+    }
+
+    public static class ChangeFestivalEndTime
+    {
+        /* Check if Event.isFestival is true before going into exitEven() */
+        static void Prefix(Event __instance, bool __state)
+        {
+            __state = __instance.isFestival;
+        }
+
+        static void Postfix(Event __instance, ref Dictionary<string, string> ___festivalData, bool __state)
+        {
+            /*  Current Code: Sets end of festival time to 2200 or 2400 depending on event
+            *
+            *   Change: Set festival end times to respective end time of each festival
+            *   (Can change based on other mods but this code will handle festival xnb file changes)
+            *   Spring 13th, Egg Festival:                      0900 - 1400
+            *   Spring 24th, Flower Dance:                      0900 - 1400
+            *   Summer 11th, Luau:                              0900 - 1400
+            *   Summer 28th, Dance of the Moonlight Jellies:    2200 - 2400
+            *   Fall 16th,   Stardew Valley Fair:               0900 - 1500
+            *   Fall 27th,   Sprit's Eve:                       2200 - 2350
+            *   Winter 8th,  Festival of Ice:                   0900 - 1400
+            *   Winter 25th, Feast of the Winter Star:          0900 - 1400
+            */
+            if (__state)
+            {
+                int startTime = Convert.ToInt32(___festivalData["conditions"].Split('/')[1].Split(' ')[0]);
+                int endTime = Convert.ToInt32(___festivalData["conditions"].Split('/')[1].Split(' ')[1]);
+                int minutes = 60 * (endTime - startTime) / 100 ;
+                Game1.timeOfDayAfterFade = endTime;
+                
+                foreach (GameLocation location in (IEnumerable<GameLocation>)Game1.locations)
+                {
+                    foreach (StardewValley.Object @object in location.objects.Values)
+                        @object.minutesElapsed(minutes, location);
+                }
+            }
+        }
+
+        /* Stop StardewValley.Object updates. Completed in Postfix */
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            var codes = instructions.ToList();
+            for (var i = 0; i < codes.Count; i++)
+            {
+                MethodInfo minutesElapsedMI = typeof(StardewValley.Object).GetMethod("minutesElapsed", new Type[] { typeof(Int32), typeof(StardewValley.GameLocation) });
+                if (minutesElapsedMI.Equals(codes[i].operand))
+                {
+                    codes[i - 2].opcode = OpCodes.Nop;
+                    codes[i - 1].opcode = OpCodes.Nop;
+                    codes[i].opcode = OpCodes.Nop;
+                    break;
+                }
+            }
+
+            return codes.AsEnumerable();
+        }
     }
 }
