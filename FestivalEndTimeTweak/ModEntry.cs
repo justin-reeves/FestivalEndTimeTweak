@@ -73,7 +73,7 @@ namespace FestivalEndTimeTweak
         {
             var codes = instructions.ToList();
             MethodInfo minutesElapsedMI = typeof(StardewValley.Object).GetMethod("minutesElapsed", new Type[] { typeof(Int32), typeof(StardewValley.GameLocation) });
-            for (var i = 0; i < codes.Count; i++)
+            for (var i = 2; i < codes.Count; i++)
             {
                 if (minutesElapsedMI.Equals(codes[i].operand))
                 {
