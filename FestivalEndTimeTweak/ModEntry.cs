@@ -22,7 +22,7 @@ namespace FestivalEndTimeTweak
             //Harmony patcher
             //https://github.com/kirbylink/FestivalEndTimeTweak.git
             var harmony = HarmonyInstance.Create("com.github.kirbylink.festivalendtimetweak");
-            var original = helper.Reflection.GetMethod(typeof(Event), "exitEvent").MethodInfo;
+            var original = typeof(Event).GetMethod("exitEvent");
             var prefix = helper.Reflection.GetMethod(typeof(FestivalEndTimeTweak.ChangeFestivalEndTime), "Prefix").MethodInfo;
             var postfix = helper.Reflection.GetMethod(typeof(FestivalEndTimeTweak.ChangeFestivalEndTime), "Postfix").MethodInfo;
             var transpiler = helper.Reflection.GetMethod(typeof(FestivalEndTimeTweak.ChangeFestivalEndTime), "Transpiler").MethodInfo;
@@ -33,12 +33,12 @@ namespace FestivalEndTimeTweak
     public static class ChangeFestivalEndTime
     {
         /* Check if Event.isFestival is true before going into exitEven() */
-        static void Prefix(Event __instance, bool __state)
+        static void Prefix(Event __instance, ref bool __state)
         {
             __state = __instance.isFestival;
         }
 
-        static void Postfix(Event __instance, ref Dictionary<string, string> ___festivalData, bool __state)
+        static void Postfix(Event __instance, ref Dictionary<string, string> ___festivalData, ref bool __state)
         {
             /*  Current Code: Sets end of festival time to 2200 or 2400 depending on event
             *
