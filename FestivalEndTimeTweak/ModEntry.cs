@@ -27,6 +27,7 @@ namespace FestivalEndTimeTweak
             var postfix = helper.Reflection.GetMethod(typeof(FestivalEndTimeTweak.ChangeFestivalEndTime), "Postfix").MethodInfo;
             var transpiler = helper.Reflection.GetMethod(typeof(FestivalEndTimeTweak.ChangeFestivalEndTime), "Transpiler").MethodInfo;
             harmony.Patch(original, new HarmonyMethod(prefix), new HarmonyMethod(postfix), new HarmonyMethod(transpiler));
+            
         }
     }
 
@@ -35,10 +36,13 @@ namespace FestivalEndTimeTweak
         /* Check if Event.isFestival is true before going into exitEven() */
         static void Prefix(Event __instance, ref bool __state)
         {
-            __state = __instance.isFestival;
+            if (__instance != null)
+            {
+                __state = __instance.isFestival;
+            }
         }
 
-        static void Postfix(Event __instance, ref Dictionary<string, string> ___festivalData, ref bool __state)
+        static void Postfix(Event __instance, ref bool __state)
         {
             /*  Current Code: Sets end of festival time to 2200 or 2400 depending on event
             *
@@ -53,10 +57,13 @@ namespace FestivalEndTimeTweak
             *   Winter 8th,  Festival of Ice:                   0900 - 1400
             *   Winter 25th, Feast of the Winter Star:          0900 - 1400
             */
+
             if (__state)
             {
-                int startTime = Convert.ToInt32(___festivalData["conditions"].Split('/')[1].Split(' ')[0]);
-                int endTime = Convert.ToInt32(___festivalData["conditions"].Split('/')[1].Split(' ')[1]);
+                var field = AccessTools.Field(typeof(Event), "festivalData");
+                var festivalData = (Dictionary<string,string>) field.GetValue(__instance);
+                int startTime = Convert.ToInt32(festivalData["conditions"].Split('/')[1].Split(' ')[0]);
+                int endTime = Convert.ToInt32(festivalData["conditions"].Split('/')[1].Split(' ')[1]);
                 int minutes = 60 * (endTime - startTime) / 100 ;
                 Game1.timeOfDayAfterFade = endTime;
                 
@@ -75,11 +82,14 @@ namespace FestivalEndTimeTweak
             MethodInfo minutesElapsedMI = typeof(StardewValley.Object).GetMethod("minutesElapsed", new Type[] { typeof(Int32), typeof(StardewValley.GameLocation) });
             for (var i = 2; i < codes.Count; i++)
             {
-                if (minutesElapsedMI.Equals(codes[i].operand))
+                if (codes[i].operand != null && codes[i].operand.GetType().IsInstanceOfType(typeof(MethodInfo)) && minutesElapsedMI.Equals((MethodInfo) codes[i].operand))
                 {
-                    codes[i - 2].opcode = OpCodes.Nop;
-                    codes[i - 1].opcode = OpCodes.Nop;
-                    codes[i].opcode = OpCodes.Nop;
+                    codes[i - 2].opcode = OpCodes.Nop; //Nop minutesElapsed() param1 load
+                    codes[i - 1].opcode = OpCodes.Nop; //Nop minutesElapsed() param2 load
+                    codes[i].opcode = OpCodes.Nop;     //Nop minutesElapsed() method call
+                    codes[i + 1].opcode = (codes[i + 1].opcode == OpCodes.Pop ? OpCodes.Nop : codes[i].opcode);
+                    
+                 
                     break;
                 }
             }
