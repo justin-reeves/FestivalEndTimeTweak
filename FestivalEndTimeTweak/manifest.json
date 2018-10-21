@@ -6,5 +6,5 @@
    "UniqueID": "kirbylink.festivalendtimetweak",
    "EntryDll": "festivalendtimetweak.dll",
    "MinimumApiVersion": "2.0",
-   "UpdateKeys": []
+   "UpdateKeys": ["Nexus:2966"]
 }
